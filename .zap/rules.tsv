@@ -1,0 +1,55 @@
+# =============================================================
+#  .zap/rules.tsv — ZAP Alert Rule Configuration
+#
+#  Format: RULE_ID  ACTION  PARAMETER  EVIDENCE
+#  Actions: IGNORE / WARN / FAIL
+#
+#  Used by the GitHub Actions zaproxy/action-baseline step:
+#    with:
+#      rules_file_name: '.zap/rules.tsv'
+#
+#  FAIL  = finding causes pipeline build failure (blocker)
+#  WARN  = finding is reported but does not fail the build
+#  IGNORE = finding is suppressed entirely from the report
+#
+#  Find rule IDs: ZAP → Alerts tab → right-click → Alert ID
+#  Or: https://www.zaproxy.org/docs/alerts/
+# =============================================================
+
+# ── Rules that FAIL the build (High severity — must fix) ─────
+10016	FAIL		# Web Browser XSS Protection Not Enabled
+10017	FAIL		# Cross-Domain JavaScript Source File Inclusion
+10019	FAIL		# Content-Type Header Missing
+10021	FAIL		# X-Content-Type-Options Header Missing (treat as FAIL for this demo)
+10038	FAIL		# Content Security Policy (CSP) Header Not Set
+10045	FAIL		# Source Code Disclosure — SQLi evidence
+40012	FAIL		# Cross Site Scripting (Reflected)
+40014	FAIL		# Cross Site Scripting (Stored)
+40018	FAIL		# SQL Injection
+40019	FAIL		# SQL Injection — MySQL
+40020	FAIL		# SQL Injection — Hypersonic SQL
+40021	FAIL		# SQL Injection — Oracle
+40022	FAIL		# SQL Injection — SQLite
+
+# ── Rules that WARN (Medium — reported, non-blocking) ────────
+10010	WARN		# Cookie No HttpOnly Flag
+10011	WARN		# Cookie Without Secure Flag
+10015	WARN		# Incomplete or No Cache-control Header Set
+10020	WARN		# Anti-clickjacking Header
+10023	WARN		# Information Disclosure — Debug Error Messages
+10024	WARN		# Information Disclosure — Sensitive Information in URL
+10025	WARN		# Information Disclosure — Sensitive Information in HTTP Referrer Header
+10027	WARN		# Information Disclosure — Suspicious Comments
+10049	WARN		# Non-Storable Content
+10050	WARN		# Retrieved from Cache
+10054	WARN		# Cookie Without SameSite Attribute
+10055	WARN		# CSP Scanner
+10062	WARN		# PII Disclosure
+10096	WARN		# Timestamp Disclosure — Unix
+10109	WARN		# Modern Web Application
+
+# ── Rules to IGNORE for this demo environment ─────────────────
+# (These are expected/intentional in a local dev setup)
+10098	IGNORE		# Cross-Domain Misconfiguration (Access-Control-Allow-Origin: *)
+10036	IGNORE		# Server Leaks Version Information (XAMPP dev server)
+10037	IGNORE		# Server Leaks Information via "X-Powered-By" HTTP Response Header

@@ -1,0 +1,21 @@
+# =============================================================
+#  robots.txt — VulnShop
+#
+#  VULNERABILITY: Security Misconfiguration
+#  Disallow entries reveal the existence of sensitive directories.
+#  ZAP's Standard Spider reads this file and discovers /admin,
+#  /backup, and /config — paths the developer intended to hide.
+#
+#  Real lesson: robots.txt is a public file. It does NOT protect
+#  anything — it just tells well-behaved bots (and attackers)
+#  exactly which paths to visit.
+# =============================================================
+
+User-agent: *
+Disallow: /admin
+Disallow: /backup
+Disallow: /config
+Disallow: /logs
+
+# These directories don't need to be crawled
+Allow: /

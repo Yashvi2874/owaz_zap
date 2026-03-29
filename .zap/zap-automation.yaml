@@ -1,0 +1,157 @@
+# =============================================================
+#  zap-automation.yaml — ZAP Automation Framework Plan
+#
+#  This single file drives a complete, headless ZAP scan:
+#    1. Define target scope (context)
+#    2. Set up form-based authentication
+#    3. Run Standard Spider (static HTML)
+#    4. Run AJAX Spider (JavaScript-rendered content)
+#    5. Wait for passive scan to finish
+#    6. Run Active Scan with all attack rules
+#    7. Generate HTML + SARIF reports
+#
+#  Run locally:
+#    zap.sh -daemon -autorun zap-automation.yaml -port 8090
+#
+#  Run via Docker:
+#    docker run --rm \
+#      -v $(pwd):/zap/wrk:rw \
+#      ghcr.io/zaproxy/zaproxy:stable \
+#      zap.sh -daemon -autorun /zap/wrk/zap-automation.yaml
+#
+#  Target URL: Docker / GitHub Actions (docker-compose, port 8080).
+#  For XAMPP, replace http://localhost:8080/VulnShop with your path, e.g.
+#  http://localhost/Siddhant/VulnShop
+# =============================================================
+
+env:
+  contexts:
+    - name: VulnShop
+      urls:
+        - "http://localhost:8080/VulnShop"
+      includePaths:
+        - "http://localhost:8080/VulnShop.*"
+      excludePaths:
+        # Excluding logout.php is CRITICAL.
+        # Without this, ZAP visits logout.php mid-scan,
+        # destroys its own session, and all subsequent requests
+        # are unauthenticated — ruining coverage.
+        - "http://localhost:8080/VulnShop/logout\\.php"
+
+      # ── Authentication ────────────────────────────────────────
+      # ZAP submits username/password to login.php automatically.
+      # After each request, ZAP checks the response for the
+      # logged-in/logged-out indicator strings to know if the
+      # session is still valid.
+      authentication:
+        method: "form"
+        parameters:
+          loginPageUrl: "http://localhost:8080/VulnShop/login.php"
+          loginRequestData: "username={%username%}&password={%password%}"
+          # Regex that appears ONLY when logged in:
+          loggedInIndicator:  "Welcome back"
+          # Regex that appears ONLY when logged out (login form visible):
+          loggedOutIndicator: "\\QLogin\\E"
+
+      sessionManagement:
+        method: "cookie"
+        parameters: {}
+
+      # ── Users ─────────────────────────────────────────────────
+      # ZAP will authenticate as these users during the spider
+      # and active scan phases.
+      users:
+        - name: john
+          credentials:
+            username: "john"
+            password: "password1"
+        - name: admin
+          credentials:
+            username: "admin"
+            password: "admin123"
+
+  parameters:
+    failOnError: true          # Exit with non-zero code if scan fails
+    failOnWarning: false
+    progressToStdout: true     # Live progress output (useful in CI logs)
+
+# ── Jobs run in this order ────────────────────────────────────
+jobs:
+
+  # ── Step 1: Standard Spider ───────────────────────────────────
+  # Parses static HTML. Fast. Discovers all linked pages.
+  # Will NOT find ajax-page.php's product links (JS-rendered).
+  - type: spider
+    name: "Standard Spider (authenticated as john)"
+    parameters:
+      context: VulnShop
+      user: john
+      maxDuration: 5          # minutes — increase for large apps
+      maxDepth: 10
+      acceptCookies: true
+
+  # ── Step 2: AJAX Spider ───────────────────────────────────────
+  # Launches a real browser, executes JavaScript.
+  # Discovers product.php?id=1..6 from ajax-page.php.
+  # Slower than standard spider — budget extra time.
+  - type: spiderAjax
+    name: "AJAX Spider (JavaScript-rendered content)"
+    parameters:
+      context: VulnShop
+      user: john
+      maxDuration: 10         # minutes — JS rendering takes time
+      browserId: firefox-headless
+      # If firefox-headless is unavailable, use: chrome-headless
+
+  # ── Step 3: OpenAPI Import ────────────────────────────────────
+  # Import the OpenAPI spec so ZAP knows all API endpoints
+  # without needing to discover them via crawling.
+  # Comment this out if you haven't placed the openapi.yaml yet.
+  - type: openapi
+    name: "Import OpenAPI specification"
+    parameters:
+      apiFile: "/zap/wrk/api/openapi.yaml"
+      context: VulnShop
+      targetUrl: "http://localhost:8080/VulnShop/api"
+
+  # ── Step 4: Passive Scan Wait ─────────────────────────────────
+  # Passive scanning runs continuously in the background.
+  # This job waits for all passive scan analysis to complete
+  # before proceeding to the active scan.
+  - type: passiveScan-wait
+    name: "Wait for passive scan to finish"
+    parameters:
+      maxDuration: 5
+
+  # ── Step 5: Active Scan ───────────────────────────────────────
+  # Fires attack payloads at every discovered parameter.
+  # Covers: SQLi, XSS, Path Traversal, SSRF, Command Injection.
+  # WARNING: Only run against your own application.
+  - type: activeScan
+    name: "Active Scan — full attack surface"
+    parameters:
+      context: VulnShop
+      user: john
+      policy: "Default Policy"  # Uses all enabled rules
+      maxRuleDurationInMins: 5  # Cap time per individual rule
+      maxScanDurationInMins: 60 # Total cap for the whole active scan
+
+  # ── Step 6: Reports ───────────────────────────────────────────
+  # HTML report — human-readable, ideal for presentations/clients
+  - type: report
+    name: "HTML Report"
+    parameters:
+      template: "modern"
+      reportDir: "/zap/reports"
+      reportFile: "zap-report.html"
+      reportTitle: "VulnShop Security Assessment"
+      reportDescription: "OWASP ZAP automated scan — educational demo"
+      displayReport: false
+
+  # SARIF report — machine-readable, integrates with GitHub Security tab
+  - type: report
+    name: "SARIF Report (for GitHub Security tab)"
+    parameters:
+      template: "sarif-json"
+      reportDir: "/zap/reports"
+      reportFile: "zap-report.sarif"

@@ -1,0 +1,236 @@
+/* =============================================================
+   style.css — VulnShop Stylesheet
+   Clean, minimal UI so the focus stays on the vulnerabilities.
+   ============================================================= */
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f6fb;
+  color: #222;
+  min-height: 100vh;
+}
+
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Navbar ───────────────────────────────────────────────── */
+.navbar {
+  background: #1a2340;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+
+.navbar .brand {
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.nav-links { display: flex; gap: 1.5rem; }
+.nav-links a { color: #c8d3f0; font-size: .95rem; transition: color .2s; }
+.nav-links a:hover { color: #fff; text-decoration: none; }
+
+/* ── Container ────────────────────────────────────────────── */
+.container {
+  max-width: 1100px;
+  margin: 2.5rem auto;
+  padding: 0 1.5rem;
+}
+
+.container.narrow { max-width: 520px; }
+
+/* ── Typography ───────────────────────────────────────────── */
+h1 { font-size: 2rem; margin-bottom: .5rem; color: #1a2340; }
+h2 { font-size: 1.4rem; margin: 1.5rem 0 .75rem; color: #2c3e6b; }
+p  { line-height: 1.6; margin-bottom: .75rem; }
+.subtitle { color: #666; font-style: italic; }
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn {
+  display: inline-block;
+  padding: .5rem 1.1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .9rem;
+  font-weight: 600;
+  transition: background .2s;
+}
+.btn:hover { background: #1d4ed8; text-decoration: none; color: #fff; }
+.btn.btn-full { width: 100%; text-align: center; padding: .75rem; }
+.btn.btn-secondary { background: #64748b; }
+.btn.btn-secondary:hover { background: #475569; }
+.btn.btn-danger { background: #dc2626; }
+.btn.btn-danger:hover { background: #b91c1c; }
+.btn.btn-sm { padding: .35rem .8rem; font-size: .82rem; }
+
+/* ── Forms ────────────────────────────────────────────────── */
+form { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; }
+label { font-weight: 600; font-size: .9rem; color: #374151; }
+
+input[type=text], input[type=password], input[type=email],
+textarea, select {
+  width: 100%;
+  padding: .6rem .85rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #fff;
+  transition: border-color .2s;
+}
+input:focus, textarea:focus { outline: none; border-color: #2563eb; }
+textarea { resize: vertical; min-height: 80px; }
+
+.search-row { display: flex; gap: .75rem; }
+.search-row input { flex: 1; }
+
+/* ── Alerts ───────────────────────────────────────────────── */
+.alert {
+  padding: .85rem 1.1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  font-size: .95rem;
+  line-height: 1.5;
+}
+.alert.error   { background: #fef2f2; border-left: 4px solid #dc2626; color: #7f1d1d; }
+.alert.success { background: #f0fdf4; border-left: 4px solid #16a34a; color: #14532d; }
+.alert.warn    { background: #fffbeb; border-left: 4px solid #f59e0b; color: #78350f; }
+
+/* ── Product Grid ─────────────────────────────────────────── */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.product-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  transition: box-shadow .2s;
+}
+.product-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.14); }
+
+.product-img {
+  font-size: 3rem;
+  text-align: center;
+  background: #eef2ff;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.product-img.large { font-size: 5rem; padding: 2rem; max-width: 260px; }
+
+.product-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.price {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a2340;
+}
+
+/* ── Product Detail ───────────────────────────────────────── */
+.product-detail {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* ── Comments ─────────────────────────────────────────────── */
+.comments { margin-top: 2rem; }
+
+.comment-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: .75rem;
+}
+.comment-card strong { color: #1a2340; }
+.comment-card .date { float: right; color: #9ca3af; font-size: .82rem; }
+.comment-card p { margin-top: .4rem; }
+
+/* ── Profile ──────────────────────────────────────────────── */
+.profile-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.avatar { font-size: 4rem; margin-bottom: 1rem; }
+
+.info-table { width: 100%; border-collapse: collapse; text-align: left; margin-top: 1rem; }
+.info-table th, .info-table td {
+  padding: .6rem .85rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: .95rem;
+}
+.info-table th { color: #6b7280; font-weight: 600; width: 35%; }
+
+/* Highlight the password field — makes the vuln very visible in demos */
+.password-leak {
+  color: #dc2626;
+  font-weight: 700;
+  font-family: monospace;
+  background: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.idor-demo { margin-top: 1.25rem; display: flex; gap: .75rem; flex-wrap: wrap; }
+
+/* ── Dashboard ────────────────────────────────────────────── */
+.dashboard-links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+
+/* ── Admin / Data tables ──────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+  margin-bottom: 2rem;
+  font-size: .9rem;
+}
+.data-table th {
+  background: #1a2340;
+  color: #fff;
+  padding: .7rem 1rem;
+  text-align: left;
+}
+.data-table td {
+  padding: .6rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:nth-child(even) td { background: #f9fafb; }

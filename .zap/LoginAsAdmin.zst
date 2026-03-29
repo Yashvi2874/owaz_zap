@@ -1,0 +1,95 @@
+{
+  "about": "=============================================================\n  LoginAsAdmin.zst — ZAP Zest Authentication Script\n\n  DEMO STEP: Feature 5 — Authentication & Zest Macros\n\n  WHAT THIS IS:\n    A Zest script is a recording of an HTTP interaction sequence.\n    ZAP uses it to automatically re-authenticate whenever the\n    session expires during a long scan.\n\n  HOW ZAP USES IT:\n    1. Scanner detects it is logged out (sees login page)\n    2. ZAP replays this script automatically\n    3. Session is restored\n    4. Scan resumes from the point of interruption\n\n  HOW TO IMPORT IN ZAP:\n    Scripts tab → Zest → right-click → Import Script\n    Select this file → Type: Authentication\n    Then attach to Default Context → Authentication → Zest Script\n\n  OR RECORD YOUR OWN:\n    Tools → Record a New Zest Script\n    Name: LoginAsAdmin, Type: Authentication\n    Click Start Recording → log in manually → Stop Recording\n  =============================================================",
+  "title": "LoginAsAdmin",
+  "description": "Authenticates to VulnShop as admin. Replayed automatically by ZAP whenever the session expires.",
+  "prefix": "http://localhost:8080/VulnShop",
+  "type": "Authentication",
+  "parameters": [],
+  "statements": [
+    {
+      "index": 1,
+      "comment": "Step 1 — GET the login page to obtain any CSRF tokens or cookies",
+      "url": "http://localhost:8080/VulnShop/login.php",
+      "method": "GET",
+      "headers": [
+        "Accept: text/html,application/xhtml+xml",
+        "User-Agent: Mozilla/5.0 (ZAP Zest Script)"
+      ],
+      "response": {
+        "statusCode": 200,
+        "assertions": [
+          {
+            "rootExpression": {
+              "code": 200,
+              "not": false,
+              "elementType": "ZestExpressionStatusCode"
+            },
+            "elementType": "ZestAssertion"
+          }
+        ]
+      },
+      "elementType": "ZestRequest"
+    },
+    {
+      "index": 2,
+      "comment": "Step 2 — POST credentials to login.php",
+      "url": "http://localhost:8080/VulnShop/login.php",
+      "method": "POST",
+      "headers": [
+        "Content-Type: application/x-www-form-urlencoded",
+        "Accept: text/html,application/xhtml+xml"
+      ],
+      "data": "username=admin&password=admin123",
+      "response": {
+        "statusCode": 302,
+        "assertions": [
+          {
+            "rootExpression": {
+              "code": 302,
+              "not": false,
+              "elementType": "ZestExpressionStatusCode"
+            },
+            "elementType": "ZestAssertion"
+          }
+        ]
+      },
+      "followRedirects": false,
+      "elementType": "ZestRequest"
+    },
+    {
+      "index": 3,
+      "comment": "Step 3 — Follow redirect to dashboard.php (confirms successful login)",
+      "url": "http://localhost:8080/VulnShop/dashboard.php",
+      "method": "GET",
+      "headers": [
+        "Accept: text/html,application/xhtml+xml"
+      ],
+      "response": {
+        "statusCode": 200,
+        "assertions": [
+          {
+            "rootExpression": {
+              "code": 200,
+              "not": false,
+              "elementType": "ZestExpressionStatusCode"
+            },
+            "elementType": "ZestAssertion"
+          },
+          {
+            "rootExpression": {
+              "value": "Welcome back",
+              "variableName": "response.body",
+              "caseExact": false,
+              "not": false,
+              "elementType": "ZestExpressionString"
+            },
+            "elementType": "ZestAssertion"
+          }
+        ]
+      },
+      "elementType": "ZestRequest"
+    }
+  ],
+  "zestVersion": "0.8",
+  "generatedBy": "ZAP — for educational/demo use only"
+}

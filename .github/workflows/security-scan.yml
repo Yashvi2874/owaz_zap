@@ -1,0 +1,149 @@
+# =============================================================
+#  .github/workflows/security-scan.yml
+#
+#  Automated OWASP ZAP Security Scan — GitHub Actions Workflow
+#
+#  WHAT THIS DOES:
+#    1. Triggers on every push to main/develop and every PR
+#    2. Starts the VulnShop application using Docker Compose
+#    3. Runs a ZAP baseline scan (passive + spider, ~5 min)
+#    4. Uploads the HTML report as a build artefact
+#    5. Uploads SARIF results to the GitHub Security tab
+#    6. Fails the build if any HIGH severity alerts are found
+#
+#  SCAN TYPES:
+#    Pull Request  →  Baseline scan (fast, ~5 min)
+#    Push to main  →  Full scan via Automation Framework (~30-60 min)
+#    Nightly       →  Full scan (scheduled, most thorough)
+#
+#  HOW TO VIEW RESULTS:
+#    Artefacts:     Actions tab → your run → Artefacts section
+#    Security tab:  Security → Code scanning alerts (SARIF)
+# =============================================================
+
+name: ZAP Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  # Nightly full scan at 02:00 UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+
+  # ── Baseline Scan (Pull Requests & pushes to develop) ────────
+  zap-baseline:
+    name: ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    # Only run baseline on PRs and develop pushes (not main, not nightly)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Start the application under test
+      # Replace this with however your app starts (docker-compose, npm start, etc.)
+      - name: Start VulnShop application
+        run: |
+          docker-compose up -d --wait
+          # Give the app a moment to fully initialise
+          sleep 5
+          # Verify the app is responding
+          curl --retry 5 --retry-delay 2 -f http://localhost:8080/VulnShop/index.php || exit 1
+
+      # Official ZAP Baseline Action — passive scanning + light spider
+      # Completes in ~3-5 minutes. Safe to run on every PR.
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          # Target URL — update to match your app's port/path
+          target: 'http://localhost:8080/VulnShop/'
+          # Rules file controls which findings FAIL vs WARN vs IGNORE
+          rules_file_name: '.zap/rules.tsv'
+          # -a: include the ajax spider for JS-rendered content
+          # -j: use ajax spider as the primary spider
+          cmd_options: '-a'
+          # Report filenames
+          issue_title: 'ZAP Baseline Scan — Security Alerts'
+          # VulnShop is intentionally vulnerable — set false so the workflow still uploads reports.
+          fail_action: false
+
+      # Upload the HTML report so anyone can download and read it
+      - name: Upload ZAP HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()   # Upload even if the scan step failed
+        with:
+          name: zap-baseline-report-${{ github.run_number }}
+          path: report_html.html
+          retention-days: 30
+
+      # Push SARIF to GitHub Security tab
+      # Findings appear inline in the PR interface
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: report_sarif.sarif
+          category: zap-baseline
+
+  # ── Full Active Scan (pushes to main & nightly schedule) ─────
+  zap-full-scan:
+    name: ZAP Full Active Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start VulnShop application
+        run: |
+          docker-compose up -d --wait
+          sleep 5
+          curl --retry 5 --retry-delay 2 -f http://localhost:8080/VulnShop/index.php || exit 1
+
+      # Full scan using the Automation Framework YAML
+      # Runs Standard Spider + AJAX Spider + OpenAPI import + Active Scan
+      # This can take 30-60 minutes on a real application
+      - name: Run ZAP Full Scan (Automation Framework)
+        run: |
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}:/zap/wrk:rw \
+            -v ${{ github.workspace }}/.zap/reports:/zap/reports:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -daemon \
+              -autorun /zap/wrk/.zap/zap-automation.yaml \
+              -port 8090 \
+              -config api.disablekey=true
+        continue-on-error: true   # Collect reports even if alerts found
+
+      - name: Upload Full Scan HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-full-report-${{ github.run_number }}
+          path: .zap/reports/zap-report.html
+          retention-days: 90    # Keep full scan reports longer
+
+      - name: Upload Full Scan SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: .zap/reports/zap-report.sarif
+          category: zap-full-scan
+
+      # Fail the job explicitly if any HIGH alerts were found
+      # (The docker run above used continue-on-error so we could collect reports)
+      - name: Check for HIGH severity alerts
+        run: |
+          if grep -q '"level": "error"' .zap/reports/zap-report.sarif 2>/dev/null; then
+            echo "❌ HIGH severity security alerts found. See the SARIF report."
+            exit 1
+          else
+            echo "✅ No HIGH severity alerts found."
+          fi

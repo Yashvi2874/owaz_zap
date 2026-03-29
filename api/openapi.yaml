@@ -1,0 +1,158 @@
+openapi: 3.0.0
+info:
+  title: VulnShop API
+  description: |
+    REST API for VulnShop — an intentionally vulnerable demo application.
+    Import this file into OWASP ZAP via:  Import → Import an OpenAPI definition from a file
+    ZAP will immediately populate the Sites tree with all endpoints below —
+    no crawling required.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/VulnShop/api
+    description: Docker (docker-compose) — default for ZAP / CI
+  - url: http://localhost/Siddhant/VulnShop/api
+    description: Local XAMPP (alternate path)
+
+paths:
+  /products.php:
+    get:
+      summary: List all products
+      description: Returns all products in the catalogue. No auth required.
+      operationId: listProducts
+      responses:
+        '200':
+          description: Array of product objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+  /user.php:
+    get:
+      summary: Get user by ID (VULNERABLE — returns password)
+      description: |
+        **SECURITY FLAW:** Returns the full user record including the plain-text
+        password field with zero authentication. Demonstrates Sensitive Data Exposure
+        and Broken Access Control.
+        SQL Injection payload: ?id=1 OR 1=1 --
+      operationId: getUser
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: User ID (integer — but concatenated raw into SQL query)
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Full user object including password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithPassword'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Database error (raw MySQL error — Security Misconfiguration)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /search.php:
+    get:
+      summary: Search products (VULNERABLE — SQLi + XSS in response)
+      description: |
+        **SECURITY FLAWS:**
+        1. SQL Injection — q parameter concatenated raw into LIKE query
+        2. XSS in API response — query term echoed back without encoding
+      operationId: searchProducts
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Search query (vulnerable to SQL injection)
+          schema:
+            type: string
+            example: wallet
+      responses:
+        '200':
+          description: Search results with raw query echo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: string
+                    description: The raw unencoded search term (XSS vector)
+                  count:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Leather Wallet
+        description:
+          type: string
+          example: Genuine leather bifold wallet
+        price:
+          type: string
+          example: "29.99"
+        image:
+          type: string
+          example: wallet.jpg
+        category:
+          type: string
+          example: Accessories
+
+    UserWithPassword:
+      type: object
+      description: Full user record — intentionally includes password field
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          description: Plain-text password (intentional vulnerability)
+          example: admin123
+        email:
+          type: string
+          example: admin@example.com
+        role:
+          type: string
+          enum: [user, admin]
+          example: admin
+        created:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "You have an error in your SQL syntax..."
